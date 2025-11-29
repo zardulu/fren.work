@@ -40,6 +40,7 @@ export const actions: Actions = {
         }
 
         if (!turnstileToken) {
+            console.error('❌ No Turnstile token provided');
             return fail(400, {
                 error: 'Please complete the security verification',
                 name,
@@ -48,10 +49,16 @@ export const actions: Actions = {
             });
         }
 
+        console.log('🔐 Verifying Turnstile token...');
         const clientIP = getClientIP(request);
+        console.log('📍 Client IP:', clientIP);
+        console.log('🔑 Using secret key:', secretKey === TURNSTILE_SECRET_KEY_TEST ? 'TEST_KEY (dev mode)' : 'PRODUCTION_KEY');
+        
         const isValidTurnstile = await verifyTurnstile(turnstileToken, secretKey, clientIP);
+        console.log('✅ Turnstile verification result:', isValidTurnstile);
         
         if (!isValidTurnstile) {
+            console.error('❌ Turnstile verification failed');
             return fail(400, {
                 error: 'Security verification failed. Please try again.',
                 name,

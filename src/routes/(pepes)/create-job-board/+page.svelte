@@ -3,6 +3,17 @@
 	import { onMount } from 'svelte';
 	import { TURNSTILE_SITE_KEY } from '$lib/turnstile';
 
+	interface Props {
+		form?: {
+			error?: string;
+			name?: string;
+			email?: string;
+			description?: string;
+		};
+	}
+
+	let { form }: Props = $props();
+	
 	let loading = $state(false);
 	let turnstileToken = $state('');
 	let turnstileLoaded = $state(false);
@@ -13,40 +24,7 @@
 	let emailError = $state('');
 
 	onMount(() => {
-		// Check if Turnstile script is already loaded
-		if (window.turnstile) {
-			turnstileLoaded = true;
-			setupCallbacks();
-			return;
-		}
-
-		// Load Turnstile script
-		const script = document.createElement('script');
-		script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
-		script.async = true;
-		script.defer = true;
-
-		script.onload = () => {
-			// Wait a bit for Turnstile to initialize
-			setTimeout(() => {
-				turnstileLoaded = true;
-				setupCallbacks();
-			}, 100);
-		};
-
-		document.head.appendChild(script);
-
-		return () => {
-			// Cleanup
-			if (script.parentNode) {
-				script.parentNode.removeChild(script);
-			}
-			cleanupCallbacks();
-		};
-	});
-
-	function setupCallbacks() {
-		// Set up unique callback functions for create board
+		// Set up global callback functions first
 		window.onTurnstileSuccessCreateBoard = (token: string) => {
 			turnstileToken = token;
 		};
@@ -59,26 +37,36 @@
 			turnstileToken = '';
 		};
 
-		// Fallback: manually render widgets if auto-render doesn't work
-		setTimeout(() => {
-			const widgets = document.querySelectorAll('.cf-turnstile');
-			if (window.turnstile && widgets.length > 0) {
-				widgets.forEach((widget) => {
-					// Only render if widget is empty (not already rendered)
-					if (widget.innerHTML.trim().length === 0) {
-						window.turnstile?.render(widget, {
-							sitekey: TURNSTILE_SITE_KEY,
-							callback: window.onTurnstileSuccessCreateBoard,
-							'error-callback': window.onTurnstileErrorCreateBoard,
-							'expired-callback': window.onTurnstileExpiredCreateBoard,
-							theme: 'light',
-							size: 'normal'
-						});
-					}
-				});
+		// Check if Turnstile script is already loaded
+		if (window.turnstile) {
+			turnstileLoaded = true;
+			return;
+		}
+
+		// Load Turnstile script - let it auto-render via data attributes
+		const script = document.createElement('script');
+		script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+		script.async = true;
+		script.defer = true;
+
+		script.onload = () => {
+			turnstileLoaded = true;
+		};
+
+		script.onerror = () => {
+			console.error('Failed to load Turnstile script');
+		};
+
+		document.head.appendChild(script);
+
+		return () => {
+			// Cleanup
+			if (script.parentNode) {
+				script.parentNode.removeChild(script);
 			}
-		}, 500);
-	}
+			cleanupCallbacks();
+		};
+	});
 
 	function cleanupCallbacks() {
 		// Clean up create board callbacks
@@ -99,7 +87,7 @@
 	<title>Create Your Job Board</title>
 </svelte:head>
 
-<div class="min-h-screen bg-bg font-brutal">
+<div class="min-h-screen bg-bg font-brutal relative z-10">
 	<!-- Brutalist Navbar -->
 	<nav class="bg-primary border-b-4 border-border shadow-brutal rounded-b-brutal">
 		<div class="flex items-center justify-between p-4">
@@ -121,6 +109,13 @@
 					Start a board for your community<br />
 				</h1>
 			</div>
+
+			<!-- Error Display -->
+			{#if form?.error}
+				<div class="bg-red-400 text-text px-6 py-3 border-3 border-border shadow-brutal-soft font-semibold mb-6 rounded-brutal">
+					{form.error}
+				</div>
+			{/if}
 
 			<form
 				method="POST"
@@ -144,6 +139,7 @@
 						id="name"
 						name="name"
 						required
+						value={form?.name || ''}
 						oninvalid={(e) => {
 							e.preventDefault();
 							nameError = 'Job board name is required';
@@ -172,6 +168,7 @@
 						id="email"
 						name="email"
 						required
+						value={form?.email || ''}
 						oninvalid={(e) => {
 							e.preventDefault();
 							emailError = e.currentTarget.validity.valueMissing

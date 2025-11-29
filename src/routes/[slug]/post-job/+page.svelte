@@ -35,25 +35,37 @@
     let posterEmailError = $state('');
 
     onMount(() => {
+        // Set up global callback functions first
+        window.onTurnstileSuccessJobPost = (token: string) => {
+            turnstileToken = token;
+        };
+        
+        window.onTurnstileErrorJobPost = () => {
+            turnstileToken = '';
+        };
+        
+        window.onTurnstileExpiredJobPost = () => {
+            turnstileToken = '';
+        };
+
         // Check if Turnstile script is already loaded
         if (window.turnstile) {
             turnstileLoaded = true;
-            setupCallbacks();
             return;
         }
 
-        // Load Turnstile script
+        // Load Turnstile script - let it auto-render via data attributes
         const script = document.createElement('script');
         script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
         script.async = true;
         script.defer = true;
         
         script.onload = () => {
-            // Wait a bit for Turnstile to initialize
-            setTimeout(() => {
-                turnstileLoaded = true;
-                setupCallbacks();
-            }, 100);
+            turnstileLoaded = true;
+        };
+
+        script.onerror = () => {
+            console.error('Failed to load Turnstile script');
         };
         
         document.head.appendChild(script);
@@ -66,41 +78,6 @@
             cleanupCallbacks();
         };
     });
-    
-    function setupCallbacks() {
-        // Set up unique callback functions for job posting
-        window.onTurnstileSuccessJobPost = (token: string) => {
-            turnstileToken = token;
-        };
-        
-        window.onTurnstileErrorJobPost = () => {
-            turnstileToken = '';
-        };
-        
-        window.onTurnstileExpiredJobPost = () => {
-            turnstileToken = '';
-        };
-        
-        // Fallback: manually render widgets if auto-render doesn't work
-        setTimeout(() => {
-            const widgets = document.querySelectorAll('.cf-turnstile');
-            if (window.turnstile && widgets.length > 0) {
-                widgets.forEach(widget => {
-                    // Only render if widget is empty (not already rendered)
-                    if (widget.innerHTML.trim().length === 0) {
-                        window.turnstile?.render(widget, {
-                            sitekey: TURNSTILE_SITE_KEY,
-                            callback: window.onTurnstileSuccessJobPost,
-                            'error-callback': window.onTurnstileErrorJobPost,
-                            'expired-callback': window.onTurnstileExpiredJobPost,
-                            theme: 'light',
-                            size: 'normal'
-                        });
-                    }
-                });
-            }
-        }, 500);
-    }
     
     function cleanupCallbacks() {
             // Clean up job posting callbacks
