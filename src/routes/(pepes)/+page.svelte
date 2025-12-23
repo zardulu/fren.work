@@ -44,7 +44,7 @@
 	</main>
 
 	<!-- Footer -->
-	<footer class="bg-primary">
+	<footer class="bg-primary relative z-10">
 		<div class="flex items-center justify-between p-6">
 			<div class="flex gap-6">
 				<a 

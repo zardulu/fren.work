@@ -23,16 +23,45 @@
 		{ src: '/pepes/pepe6.png', top: '74%', left: '75%', rotate: -12, width: 140 },
 	];
 
-	let isMobile = $state(false);
-	let pepeImages = $derived(isMobile ? pepeImagesMobile : pepeImagesDesktop);
+	const pepeImagesMedium = [
+		{ src: '/pepes/pepe1.png', top: '6%', left: '12%', rotate: -10, width: 160 },
+		{ src: '/pepes/pepe2.png', top: '9%', left: '75%', rotate: 8, width: 180 },
+		{ src: '/pepes/pepe3.png', top: '68%', left: '8%', rotate: 6, width: 180 },
+		{ src: '/pepes/pepe4.png', top: '41%', left: '72%', rotate: -6, width: 180 },
+		{ src: '/pepes/pepe5.png', top: '29%', left: '4%', rotate: 12, width: 170 },
+		{ src: '/pepes/pepe6.png', top: '70%', left: '78%', rotate: -12, width: 180 },
+	];
+
+	let screenSize = $state<'mobile' | 'medium' | 'desktop'>('desktop');
+	let pepeImages = $derived(
+		screenSize === 'mobile' ? pepeImagesMobile : 
+		screenSize === 'medium' ? pepeImagesMedium : 
+		pepeImagesDesktop
+	);
 
 	onMount(() => {
 		if (typeof window !== 'undefined') {
-			const mq = window.matchMedia('(max-width: 768px)');
-			const update = () => (isMobile = mq.matches);
-			mq.addEventListener?.('change', update);
+			const mqMobile = window.matchMedia('(max-width: 768px)');
+			const mqMedium = window.matchMedia('(min-width: 769px) and (max-width: 1024px)');
+			
+			const update = () => {
+				if (mqMobile.matches) {
+					screenSize = 'mobile';
+				} else if (mqMedium.matches) {
+					screenSize = 'medium';
+				} else {
+					screenSize = 'desktop';
+				}
+			};
+			
+			mqMobile.addEventListener?.('change', update);
+			mqMedium.addEventListener?.('change', update);
 			update();
-			return () => mq.removeEventListener?.('change', update);
+			
+			return () => {
+				mqMobile.removeEventListener?.('change', update);
+				mqMedium.removeEventListener?.('change', update);
+			};
 		}
 	});
 </script>
